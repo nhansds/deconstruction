@@ -6,7 +6,7 @@ export function PublicDashboard() {
 
   if (missingConfig) {
     return (
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+      <div className="min-w-0 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 sm:p-6 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
         <h1 className="text-xl font-semibold">deconstruction — configuration requise</h1>
         <p className="mt-2 text-sm leading-relaxed">
           Créez un fichier <code className="rounded bg-amber-100 px-1 py-0.5 dark:bg-amber-900/80">.env</code> à la racine du projet avec les clés Firebase (voir{' '}
@@ -18,7 +18,7 @@ export function PublicDashboard() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
+      <div className="flex min-w-0 justify-center px-2 py-20">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
       </div>
     )
@@ -26,7 +26,7 @@ export function PublicDashboard() {
 
   if (error) {
     return (
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+      <div className="min-w-0 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 sm:p-6 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
         <p className="font-medium">{error}</p>
         <p className="mt-2 text-sm">
           Vérifiez les règles Firestore (lecture publique) et la console Firebase.
@@ -36,7 +36,7 @@ export function PublicDashboard() {
   }
 
   return (
-    <div>
+    <div className="min-w-0">
       <ScoreCharts hommes={hommes} evenements={evenements} />
     </div>
   )
