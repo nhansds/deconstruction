@@ -26,7 +26,7 @@ export function ScoreCharts({ hommes, evenements }: Props) {
 
   if (hommes.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900">
+      <p className="rounded-xl border border-dashed border-slate-300 bg-white p-6 text-center text-slate-500 light:border-slate-300 pink:border-pink-200/80 pink:bg-white/90 dark:border-slate-700 dark:bg-slate-900">
         Aucun homme enregistré pour l’instant.
       </p>
     )
@@ -37,9 +37,9 @@ export function ScoreCharts({ hommes, evenements }: Props) {
       <section>
         <h2 className="mb-3 text-lg font-semibold">Évolution des points (lignes)</h2>
         {lineData.length === 0 ? (
-          <p className="text-slate-500">Pas encore d’événements.</p>
+          <p className="text-slate-500 pink:text-pink-900/70">Pas encore d’événements.</p>
         ) : (
-          <div className="h-80 w-full rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
+          <div className="h-80 w-full rounded-xl border border-slate-200 bg-white p-2 light:border-slate-200 pink:border-pink-200/80 pink:bg-white/95 dark:border-slate-800 dark:bg-slate-900">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -66,7 +66,7 @@ export function ScoreCharts({ hommes, evenements }: Props) {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Total par personne (histogramme)</h2>
-        <div className="h-72 w-full rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
+        <div className="h-72 w-full rounded-xl border border-slate-200 bg-white p-2 light:border-slate-200 pink:border-pink-200/80 pink:bg-white/95 dark:border-slate-800 dark:bg-slate-900">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barData} layout="vertical" margin={{ left: 16, right: 16 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
@@ -85,9 +85,9 @@ export function ScoreCharts({ hommes, evenements }: Props) {
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Classement général</h2>
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white light:border-slate-200 pink:border-pink-200/80 pink:bg-white/95 dark:border-slate-800 dark:bg-slate-900">
           <table className="w-full text-left text-sm">
-            <thead className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <thead className="bg-slate-100 text-slate-600 light:bg-slate-100 pink:bg-pink-100/60 pink:text-pink-900 dark:bg-slate-800 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3">#</th>
                 <th className="px-4 py-3">Homme</th>
@@ -98,7 +98,7 @@ export function ScoreCharts({ hommes, evenements }: Props) {
               {ranks.map((row, i) => (
                 <tr
                   key={row.homme.id}
-                  className="border-t border-slate-100 dark:border-slate-800"
+                  className="border-t border-slate-100 light:border-slate-100 pink:border-pink-100 dark:border-slate-800"
                 >
                   <td className="px-4 py-3 font-medium text-slate-500">{i + 1}</td>
                   <td className="px-4 py-3">
@@ -107,7 +107,7 @@ export function ScoreCharts({ hommes, evenements }: Props) {
                         <img
                           src={row.homme.photoUrl}
                           alt=""
-                          className="h-9 w-9 rounded-full object-cover ring-2 ring-white dark:ring-slate-900"
+                          className="h-9 w-9 rounded-full object-cover ring-2 ring-white light:ring-white pink:ring-pink-100 dark:ring-slate-900"
                           style={{ outline: `2px solid ${row.homme.couleur}` }}
                         />
                       ) : (

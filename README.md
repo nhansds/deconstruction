@@ -6,7 +6,8 @@ Les données sont stockées dans **Cloud Firestore** (gratuit dans les quotas mo
 
 ## Fonctionnalités
 
-- **Public** : `/` — **deconstruction**, tableau des points : graphique d’évolution, histogramme des totaux, classement.
+- **Public** : `/` — tableau des points : graphique d’évolution, histogramme, classement.
+- **Thèmes** : **Rose** (défaut), **Clair**, **Sombre** — sélecteur dans l’en-tête, choix mémorisé (`localStorage`).
 - **Admin** : `/admin` — prénom, nom, photo, couleur ; actions et événements ; graphiques ; **paramètres d’accès** (`config/site`, inscriptions oui/non) ; **annuaire administrateurs** (`admins/{uid}`, synchronisé à la connexion).
 
 ## Prérequis

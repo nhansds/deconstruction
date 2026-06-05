@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Thèmes : sombre = classe .dark sur <html> ; clair / rose = data-theme */
+@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant light (&:where(html[data-theme='light'] &));
+@custom-variant pink (&:where(html[data-theme='pink'] &));
+
 @theme {
   --font-sans: 'DM Sans', system-ui, sans-serif;
 }

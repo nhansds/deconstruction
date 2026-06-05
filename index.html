@@ -11,6 +11,21 @@
       rel="stylesheet"
     />
     <title>deconstruction</title>
+    <script>
+      (function () {
+        try {
+          var k = 'deconstruction-theme'
+          var t = localStorage.getItem(k) || 'pink'
+          if (t !== 'light' && t !== 'pink' && t !== 'dark') t = 'pink'
+          document.documentElement.setAttribute('data-theme', t)
+          document.documentElement.classList.toggle('dark', t === 'dark')
+          document.documentElement.style.colorScheme = t === 'dark' ? 'dark' : 'light'
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'pink')
+          document.documentElement.style.colorScheme = 'light'
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

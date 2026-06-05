@@ -385,7 +385,6 @@ export function AdminPage() {
     <div>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">deconstruction</h1>
           <p className="text-sm text-slate-500">
             Administration · {auth.user.email}
           </p>

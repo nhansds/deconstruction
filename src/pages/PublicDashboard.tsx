@@ -37,10 +37,6 @@ export function PublicDashboard() {
 
   return (
     <div>
-      <h1 className="mb-2 text-2xl font-bold tracking-tight">deconstruction</h1>
-      <p className="mb-8 text-slate-600 dark:text-slate-400">
-        Tableau public des points — données en direct, sans connexion administrateur.
-      </p>
       <ScoreCharts hommes={hommes} evenements={evenements} />
     </div>
   )
