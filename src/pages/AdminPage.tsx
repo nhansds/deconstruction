@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { addDoc, collection, deleteDoc, doc, setDoc } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, setDoc, updateDoc } from 'firebase/firestore'
 import { getFirebase } from '../firebase'
 import { useAdminsList } from '../hooks/useAdminsList'
 import { useAuth } from '../hooks/useAuth'
@@ -23,6 +23,13 @@ const tabs: { id: Tab; label: string }[] = [
 /** Bouton « Supprimer » sur une ligne de liste (homme, action, événement). */
 const rowDeleteButtonClass =
   'touch-manipulation min-h-10 w-full shrink-0 rounded-md border border-red-200 bg-white px-2.5 py-2 text-xs font-medium text-red-700 shadow-sm hover:bg-red-50 disabled:pointer-events-none disabled:opacity-40 dark:border-red-800 dark:bg-slate-950 dark:text-red-300 dark:hover:bg-red-950/50 sm:w-auto sm:min-h-0 sm:py-1.5'
+
+function parseCoefficientInput(raw: string): number | null {
+  const t = raw.trim().replace(',', '.')
+  if (t === '') return null
+  const n = Number(t)
+  return Number.isFinite(n) ? n : null
+}
 
 function readFileAsDataUrl(file: File, maxBytes: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -67,6 +74,8 @@ export function AdminPage() {
   /* ——— Action ——— */
   const [libelle, setLibelle] = useState('')
   const [coefficient, setCoefficient] = useState('1')
+  /** Brouillons du coefficient par id d’action (clé absente = valeur Firestore affichée). */
+  const [actionCoeffDraftById, setActionCoeffDraftById] = useState<Record<string, string>>({})
 
   /* ——— Événement ——— */
   const [selHomme, setSelHomme] = useState('')
@@ -153,8 +162,8 @@ export function AdminPage() {
     e.preventDefault()
     if (!fb || !auth.user) return
     setFormError(null)
-    const coef = Number(coefficient.replace(',', '.'))
-    if (Number.isNaN(coef)) {
+    const coef = parseCoefficientInput(coefficient)
+    if (coef === null) {
       setFormError('Coefficient invalide')
       return
     }
@@ -180,6 +189,36 @@ export function AdminPage() {
     setBusy(true)
     try {
       await deleteDoc(doc(fb.db, 'actions', a.id))
+      setActionCoeffDraftById((prev) => {
+        const next = { ...prev }
+        delete next[a.id]
+        return next
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function updateActionCoefficient(a: ActionDef) {
+    if (!fb || !auth.user) return
+    const raw = actionCoeffDraftById[a.id] ?? String(a.coefficient)
+    const next = parseCoefficientInput(raw)
+    if (next === null) {
+      setFormError('Coefficient invalide')
+      return
+    }
+    if (next === a.coefficient) return
+    setFormError(null)
+    setBusy(true)
+    try {
+      await updateDoc(doc(fb.db, 'actions', a.id), { coefficient: next })
+      setActionCoeffDraftById((prev) => {
+        const next = { ...prev }
+        delete next[a.id]
+        return next
+      })
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Impossible de mettre à jour le coefficient.')
     } finally {
       setBusy(false)
     }
@@ -562,30 +601,60 @@ export function AdminPage() {
             </div>
           </form>
           <div>
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+              Modifier le coefficient d’une action n’altère pas les points déjà enregistrés sur les
+              événements passés ; seuls les nouveaux événements utiliseront la valeur mise à jour.
+            </p>
             <ul className="space-y-2">
-            {live.actions.map((a) => (
+            {live.actions.map((a) => {
+              const draftRaw = actionCoeffDraftById[a.id]
+              const parsed = parseCoefficientInput(
+                draftRaw !== undefined ? draftRaw : String(a.coefficient),
+              )
+              const canUpdateCoeff = parsed !== null && parsed !== a.coefficient
+              return (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:grid sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-3 sm:px-4 sm:py-3"
+                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:px-4 sm:py-3"
               >
-                <span className="min-w-0 max-w-full flex-1 basis-full font-medium break-words sm:basis-auto sm:truncate">
+                <span className="min-w-0 font-medium break-words sm:max-w-[min(100%,14rem)] sm:flex-1 md:max-w-none">
                   {a.libelle}
                 </span>
-                <span className="shrink-0 tabular-nums text-slate-600 dark:text-slate-400">
-                  {a.coefficient > 0 ? '+' : ''}
-                  {a.coefficient} pts
-                </span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => removeAction(a)}
-                  className={rowDeleteButtonClass}
-                  aria-label={`Supprimer l’action ${a.libelle}`}
-                >
-                  Supprimer
-                </button>
+                <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                  <label className="flex min-w-0 flex-col text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <span className="mb-0.5">Coefficient (pts)</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      aria-label={`Coefficient pour l’action ${a.libelle}`}
+                      value={draftRaw ?? String(a.coefficient)}
+                      onChange={(e) =>
+                        setActionCoeffDraftById((prev) => ({ ...prev, [a.id]: e.target.value }))
+                      }
+                      className="min-h-10 w-full min-w-[6.5rem] max-w-[8.5rem] rounded-lg border border-slate-300 bg-white px-2 py-2 text-base tabular-nums dark:border-slate-600 dark:bg-slate-950"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    disabled={busy || !canUpdateCoeff}
+                    onClick={() => updateActionCoefficient(a)}
+                    className="touch-manipulation min-h-10 shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Mettre à jour
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => removeAction(a)}
+                    className={rowDeleteButtonClass}
+                    aria-label={`Supprimer l’action ${a.libelle}`}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </li>
-            ))}
+              )
+            })}
           </ul>
           </div>
         </section>
