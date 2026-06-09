@@ -71,6 +71,13 @@ export function AdminPage() {
   )
   const effectiveHommeCouleur = couleurOverride ?? autoHommeCouleur
 
+  /** Édition d’un homme existant (formulaire inline dans la liste). */
+  const [editingHommeId, setEditingHommeId] = useState<string | null>(null)
+  const [editHommePrenom, setEditHommePrenom] = useState('')
+  const [editHommeNom, setEditHommeNom] = useState('')
+  const [editHommePhotoUrl, setEditHommePhotoUrl] = useState('')
+  const [editHommeCouleur, setEditHommeCouleur] = useState('#6366f1')
+
   /* ——— Action ——— */
   const [libelle, setLibelle] = useState('')
   const [coefficient, setCoefficient] = useState('1')
@@ -147,9 +154,71 @@ export function AdminPage() {
     }
   }
 
+  function startEditHomme(h: Homme) {
+    setFormError(null)
+    setEditingHommeId(h.id)
+    setEditHommePrenom(h.prenom)
+    setEditHommeNom(h.nom)
+    setEditHommePhotoUrl(h.photoUrl?.trim() ?? '')
+    setEditHommeCouleur(h.couleur || '#6366f1')
+  }
+
+  function cancelEditHomme() {
+    setEditingHommeId(null)
+  }
+
+  async function editHommePhotoFromFile(file: File | null) {
+    if (!file) return
+    setFormError(null)
+    try {
+      const url = await readFileAsDataUrl(file, 350 * 1024)
+      setEditHommePhotoUrl(url)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Erreur fichier')
+    }
+  }
+
+  async function saveHommeEdits(hId: string) {
+    if (!fb || !auth.user) return
+    const current = live.hommes.find((x) => x.id === hId)
+    if (!current) return
+    const prenom = editHommePrenom.trim()
+    const nom = editHommeNom.trim()
+    if (!prenom || !nom) {
+      setFormError('Prénom et nom sont obligatoires.')
+      return
+    }
+    const photoUrl = editHommePhotoUrl.trim()
+    const couleur = editHommeCouleur
+    if (
+      prenom === current.prenom &&
+      nom === current.nom &&
+      photoUrl === (current.photoUrl ?? '').trim() &&
+      couleur.toLowerCase() === (current.couleur ?? '').toLowerCase()
+    ) {
+      return
+    }
+    setFormError(null)
+    setBusy(true)
+    try {
+      await updateDoc(doc(fb.db, 'hommes', hId), {
+        prenom,
+        nom,
+        photoUrl,
+        couleur,
+      })
+      setEditingHommeId(null)
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Impossible d’enregistrer les modifications.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function removeHomme(h: Homme) {
     if (!fb || !auth.user) return
     if (!confirm(`Supprimer ${h.prenom} ${h.nom} ?`)) return
+    if (editingHommeId === h.id) setEditingHommeId(null)
     setBusy(true)
     try {
       await deleteDoc(doc(fb.db, 'hommes', h.id))
@@ -521,42 +590,170 @@ export function AdminPage() {
             </div>
           </form>
           <div>
+            <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+              Modifier le nom ou la photo ne met pas à jour le libellé affiché sur les événements déjà
+              enregistrés ; seuls les nouveaux événements utiliseront le nom à jour.
+            </p>
             <ul className="space-y-3">
-            {live.hommes.map((h) => (
+            {live.hommes.map((h) => {
+              const isEditing = editingHommeId === h.id
+              const previewPrenom = isEditing ? editHommePrenom : h.prenom
+              const previewNom = isEditing ? editHommeNom : h.nom
+              const previewPhoto = isEditing ? editHommePhotoUrl : h.photoUrl
+              const previewCouleur = isEditing ? editHommeCouleur : h.couleur
+              const canSaveEdit =
+                isEditing &&
+                editHommePrenom.trim() !== '' &&
+                editHommeNom.trim() !== '' &&
+                (editHommePrenom.trim() !== h.prenom ||
+                  editHommeNom.trim() !== h.nom ||
+                  editHommePhotoUrl.trim() !== (h.photoUrl ?? '').trim() ||
+                  editHommeCouleur.toLowerCase() !== (h.couleur ?? '').toLowerCase())
+
+              return (
               <li
                 key={h.id}
-                className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-4"
+                className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-4"
               >
-                <div className="flex min-w-0 items-center gap-3">
-                  {h.photoUrl ? (
-                    <img src={h.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
-                  ) : (
-                    <span
-                      className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white"
-                      style={{ background: h.couleur }}
-                    >
-                      {(h.prenom[0] ?? '?').toUpperCase()}
-                      {(h.nom[0] ?? '?').toUpperCase()}
-                    </span>
-                  )}
-                  <div className="min-w-0">
-                    <p className="font-medium break-words">
-                      {h.prenom} {h.nom}
-                    </p>
-                    <p className="text-xs text-slate-500">{h.couleur}</p>
+                {isEditing ? (
+                  <div className="flex min-w-0 flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      {previewPhoto ? (
+                        <img src={previewPhoto} alt="" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                      ) : (
+                        <span
+                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-base font-bold text-white"
+                          style={{ background: previewCouleur }}
+                        >
+                          {(previewPrenom[0] ?? '?').toUpperCase()}
+                          {(previewNom[0] ?? '?').toUpperCase()}
+                        </span>
+                      )}
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        Modifier la fiche
+                      </p>
+                    </div>
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                      <label className="text-sm font-medium">
+                        Prénom
+                        <input
+                          required
+                          value={editHommePrenom}
+                          onChange={(e) => setEditHommePrenom(e.target.value)}
+                          className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-600 dark:bg-slate-950"
+                        />
+                      </label>
+                      <label className="text-sm font-medium">
+                        Nom
+                        <input
+                          required
+                          value={editHommeNom}
+                          onChange={(e) => setEditHommeNom(e.target.value)}
+                          className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-600 dark:bg-slate-950"
+                        />
+                      </label>
+                      <label className="min-w-0 sm:col-span-2">
+                        <span className="text-sm font-medium">URL de la photo (optionnel)</span>
+                        <input
+                          value={editHommePhotoUrl}
+                          onChange={(e) => setEditHommePhotoUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-600 dark:bg-slate-950"
+                        />
+                      </label>
+                      <label className="text-sm font-medium sm:col-span-2">
+                        Ou fichier image (max ~350 Ko)
+                        <input
+                          key={h.id}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => editHommePhotoFromFile(e.target.files?.[0] ?? null)}
+                          className="mt-1 w-full text-sm"
+                        />
+                      </label>
+                      <label className="text-sm font-medium sm:col-span-2">
+                        Couleur
+                        <input
+                          type="color"
+                          value={editHommeCouleur}
+                          onChange={(e) => setEditHommeCouleur(e.target.value)}
+                          className="mt-2 h-10 w-full max-w-xs cursor-pointer rounded border border-slate-300 bg-white dark:border-slate-600"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={busy || !canSaveEdit}
+                        onClick={() => saveHommeEdits(h.id)}
+                        className="touch-manipulation min-h-11 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:pointer-events-none disabled:opacity-40"
+                      >
+                        Enregistrer les modifications
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={cancelEditHomme}
+                        className="touch-manipulation min-h-11 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium dark:border-slate-600 dark:bg-slate-900"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => removeHomme(h)}
+                        className={rowDeleteButtonClass}
+                        aria-label={`Supprimer ${h.prenom} ${h.nom}`}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => removeHomme(h)}
-                  className={rowDeleteButtonClass}
-                  aria-label={`Supprimer ${h.prenom} ${h.nom}`}
-                >
-                  Supprimer
-                </button>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      {h.photoUrl ? (
+                        <img src={h.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+                      ) : (
+                        <span
+                          className="flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white"
+                          style={{ background: h.couleur }}
+                        >
+                          {(h.prenom[0] ?? '?').toUpperCase()}
+                          {(h.nom[0] ?? '?').toUpperCase()}
+                        </span>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium break-words">
+                          {h.prenom} {h.nom}
+                        </p>
+                        <p className="text-xs text-slate-500">{h.couleur}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        disabled={busy || editingHommeId !== null}
+                        onClick={() => startEditHomme(h)}
+                        className="touch-manipulation min-h-10 w-full shrink-0 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-800 shadow-sm hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-40 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:hover:bg-slate-800 sm:w-auto sm:min-h-0 sm:py-1.5"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => removeHomme(h)}
+                        className={rowDeleteButtonClass}
+                        aria-label={`Supprimer ${h.prenom} ${h.nom}`}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
-            ))}
+              )
+            })}
           </ul>
           </div>
         </section>
@@ -586,6 +783,11 @@ export function AdminPage() {
                 Coefficient (points)
                 <input
                   required
+                  type="text"
+                  inputMode="text"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
                   value={coefficient}
                   onChange={(e) => setCoefficient(e.target.value)}
                   className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base dark:border-slate-600 dark:bg-slate-950"
@@ -625,7 +827,10 @@ export function AdminPage() {
                     <span className="mb-0.5">Coefficient (pts)</span>
                     <input
                       type="text"
-                      inputMode="decimal"
+                      inputMode="text"
+                      autoComplete="off"
+                      autoCapitalize="off"
+                      spellCheck={false}
                       aria-label={`Coefficient pour l’action ${a.libelle}`}
                       value={draftRaw ?? String(a.coefficient)}
                       onChange={(e) =>
